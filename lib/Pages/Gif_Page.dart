@@ -1,4 +1,4 @@
-// ignore_for_file: non_constant_identifier_names, unused_local_variable
+// ignore_for_file: non_constant_identifier_names, unused_local_variable, unused_field
 
 import 'package:flutter/material.dart';
 import 'package:gyphi/Models/ModeloGif.dart';
@@ -15,37 +15,77 @@ class _GifPageState extends State<GifPage> {
   final gifsprovider = GifProvider();
   late Future<List<ModeloGif>> _listadoGifs;
 
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoading = false;
+  int _offset = 0;
+
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    _listadoGifs = gifsprovider.getGifs();
+    _listadoGifs = gifsprovider.getGifs(_offset);
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      // Lógica para cargar más GIFs
+      if (!_isLoading) {
+        setState(() {
+          _isLoading = true;
+        });
+
+        // Cargar más GIFs y actualizar el offset
+        _listadoGifs.then((list) {
+          gifsprovider.getGifs(_offset).then((newGifs) {
+            setState(() {
+              list.addAll(newGifs);
+              _offset += newGifs.length;
+              _isLoading = false;
+            });
+          });
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: SafeArea(
-            child: Container(
-      child: FutureBuilder(
-        future: _listadoGifs,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return GridView.count(
-              crossAxisCount: 2,
-              children: ListGifs(snapshot.data as List<ModeloGif>),
-            );
-          } else {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-        },
+      appBar: AppBar(
+        title: Text("🥸 GIPHY"),
+        backgroundColor: Colors.pink,
       ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.0),
+      body: SafeArea(
+        child: Container(
+          child: FutureBuilder(
+            future: _listadoGifs,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return GridView.count(
+                  controller: _scrollController,
+                  crossAxisCount: 2,
+                  children: ListGifs(snapshot.data as List<ModeloGif>),
+                );
+              } else {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+            },
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+        ),
       ),
-    )));
+    );
   }
 }
 
