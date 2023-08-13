@@ -1,5 +1,6 @@
-// ignore_for_file: non_constant_identifier_names, unused_local_variable, unused_field
+// ignore_for_file: non_constant_identifier_names, unused_local_variable
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:gyphi/Models/ModeloGif.dart';
 import 'package:gyphi/Providers/Gif_Provider.dart';
@@ -12,82 +13,72 @@ class GifPage extends StatefulWidget {
 }
 
 class _GifPageState extends State<GifPage> {
+  final ScrollController _scrollCon = ScrollController();
   final gifsprovider = GifProvider();
-  late Future<List<ModeloGif>> _listadoGifs;
-
-  final ScrollController _scrollController = ScrollController();
-  bool _isLoading = false;
-  int _offset = 0;
+  late Future<List<ModeloGif>> _listedGifs;
+   List<ModeloGif> _loadedGifs = [];
+  bool _loadingMore = false;
+  int _loadedGifCount = 0;
 
   @override
   void initState() {
+    // TODO: implement initState
     super.initState();
-    _listadoGifs = gifsprovider.getGifs(_offset);
-    _scrollController.addListener(_scrollListener);
+    _listedGifs = gifsprovider.getGifs();
   }
+  Future<void> _loadMoreItems() async {
+    if (!_loadingMore) {
+      setState(() {
+        _loadingMore = true;
+      });
 
-  void _scrollListener() {
-    if (_scrollController.position.pixels ==
-        _scrollController.position.maxScrollExtent) {
-      // Lógica para cargar más GIFs
-      if (!_isLoading) {
-        setState(() {
-          _isLoading = true;
-        });
+      final moreGifs = await gifsprovider.getMoreGifs(_loadedGifCount);
 
-        // Cargar más GIFs y actualizar el offset
-        _listadoGifs.then((list) {
-          gifsprovider.getGifs(_offset).then((newGifs) {
-            setState(() {
-              list.addAll(newGifs);
-              _offset += newGifs.length;
-              _isLoading = false;
-            });
-          });
-        });
-      }
+      setState(() {
+        _loadedGifs.addAll(moreGifs);
+        _loadedGifCount += moreGifs.length;
+        _loadingMore = false;
+      });
     }
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    _scrollCon.addListener(() {
+      if (_scrollCon.position.pixels >=
+          _scrollCon.position.maxScrollExtent - 200) {
+        _loadMoreItems();
+      }
+    });
     return Scaffold(
-      appBar: AppBar(
-        title: Text("🥸 GIPHY"),
-        backgroundColor: Colors.pink,
+        body: SafeArea(
+            child: Container(
+      child: FutureBuilder(
+        future: _listedGifs,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _loadedGifs = snapshot.data as List<ModeloGif>; 
+            return GridView.count(
+
+              controller: _scrollCon,
+              crossAxisCount: 2,
+              children: ListGifs(_loadedGifs),
+              dragStartBehavior: DragStartBehavior.start,
+            );
+          } else {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
       ),
-      body: SafeArea(
-        child: Container(
-          child: FutureBuilder(
-            future: _listadoGifs,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return GridView.count(
-                  controller: _scrollController,
-                  crossAxisCount: 2,
-                  children: ListGifs(snapshot.data as List<ModeloGif>),
-                );
-              } else {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-            },
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-        ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.0),
       ),
-    );
+    )));
   }
 }
+
 
 List<Widget> ListGifs(List<ModeloGif> data) {
   List<Widget> gifs = [];
@@ -98,10 +89,11 @@ List<Widget> ListGifs(List<ModeloGif> data) {
       child: Column(
         children: <Widget>[
           Expanded(
-              child: Image.network(
-            url,
-            fit: BoxFit.fill,
-          ))
+            child: Image.network(
+              url,
+              fit: BoxFit.fill,
+            ),
+          )
         ],
       ),
     ));
