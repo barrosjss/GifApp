@@ -1,5 +1,6 @@
 // ignore_for_file: non_constant_identifier_names, unused_local_variable
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:gyphi/Models/ModeloGif.dart';
 import 'package:gyphi/Providers/Gif_Provider.dart';
@@ -12,28 +13,57 @@ class GifPage extends StatefulWidget {
 }
 
 class _GifPageState extends State<GifPage> {
+  final ScrollController _scrollCon = ScrollController();
   final gifsprovider = GifProvider();
-  late Future<List<ModeloGif>> _listadoGifs;
+  late Future<List<ModeloGif>> _listedGifs;
+   List<ModeloGif> _loadedGifs = [];
+  bool _loadingMore = false;
+  int _loadedGifCount = 0;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    _listadoGifs = gifsprovider.getGifs();
+    _listedGifs = gifsprovider.getGifs();
+  }
+  Future<void> _loadMoreItems() async {
+    if (!_loadingMore) {
+      setState(() {
+        _loadingMore = true;
+      });
+
+      final moreGifs = await gifsprovider.getMoreGifs(_loadedGifCount);
+
+      setState(() {
+        _loadedGifs.addAll(moreGifs);
+        _loadedGifCount += moreGifs.length;
+        _loadingMore = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    _scrollCon.addListener(() {
+      if (_scrollCon.position.pixels >=
+          _scrollCon.position.maxScrollExtent - 200) {
+        _loadMoreItems();
+      }
+    });
     return Scaffold(
         body: SafeArea(
             child: Container(
       child: FutureBuilder(
-        future: _listadoGifs,
+        future: _listedGifs,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
+            _loadedGifs = snapshot.data as List<ModeloGif>; // Initialize loaded GIFs
             return GridView.count(
+
+              controller: _scrollCon,
               crossAxisCount: 2,
-              children: ListGifs(snapshot.data as List<ModeloGif>),
+              children: ListGifs(_loadedGifs),
+              dragStartBehavior: DragStartBehavior.start,
             );
           } else {
             return const Center(
@@ -49,6 +79,7 @@ class _GifPageState extends State<GifPage> {
   }
 }
 
+
 List<Widget> ListGifs(List<ModeloGif> data) {
   List<Widget> gifs = [];
   for (var gif in data) {
@@ -58,10 +89,11 @@ List<Widget> ListGifs(List<ModeloGif> data) {
       child: Column(
         children: <Widget>[
           Expanded(
-              child: Image.network(
-            url,
-            fit: BoxFit.fill,
-          ))
+            child: Image.network(
+              url,
+              fit: BoxFit.fill,
+            ),
+          )
         ],
       ),
     ));

@@ -18,4 +18,17 @@ class GifProvider {
       throw Exception(' Ocurrio Algo ${resp.statusCode}');
     }
   }
+
+  Future<List<ModeloGif>> getMoreGifs(int start) async {
+    final resp = await http.get(Uri.parse('$url&offset=$start')); // Modify the URL to include offset
+
+    if (resp.statusCode == 200) {
+      String body = utf8.decode(resp.bodyBytes);
+      final jsonList = jsonDecode(body);
+      final gifs = Gifs.fromJsonList(jsonList);
+      return gifs.items;
+    } else {
+      throw Exception(' Ocurrio Algo ${resp.statusCode}');
+    }
+  }
 }

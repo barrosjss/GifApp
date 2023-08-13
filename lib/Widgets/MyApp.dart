@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:gyphi/Pages/Gif_Page.dart';
-import '../Pages/Home_Page.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
