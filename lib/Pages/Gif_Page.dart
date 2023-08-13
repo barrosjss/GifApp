@@ -57,7 +57,7 @@ class _GifPageState extends State<GifPage> {
         future: _listedGifs,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            _loadedGifs = snapshot.data as List<ModeloGif>; // Initialize loaded GIFs
+            _loadedGifs = snapshot.data as List<ModeloGif>; 
             return GridView.count(
 
               controller: _scrollCon,
